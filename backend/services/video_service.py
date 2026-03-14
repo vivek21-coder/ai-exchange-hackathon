@@ -16,7 +16,7 @@ logger = logging.getLogger("learncast.video")
 # Video dimensions (9:16 vertical reel)
 WIDTH = 720
 HEIGHT = 1280
-FPS = 30
+FPS = 24
 
 # Colors (RGB tuples for Pillow)
 BG_TOP = (8, 8, 30)
@@ -296,17 +296,17 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
     if topic:
         # Subtle glow behind title
         draw_glow(draw, WIDTH // 2, 80, 150, (0, 0, 0), alpha=0.6)
-        
+
         # Display topic name at top
         topic_text = topic.upper()
         # Truncate if too long
         if len(topic_text) > 30:
             topic_text = topic_text[:27] + "..."
-            
+
         t_bbox = draw.textbbox((0, 0), topic_text, font=topic_font)
         tw = t_bbox[2] - t_bbox[0]
         th = t_bbox[3] - t_bbox[1]
-        
+
         # Draw with thick outline for readability without overlay
         draw_text_with_outline(draw, ((WIDTH - tw) // 2, 60), topic_text, topic_font, (255, 255, 255), (0, 0, 0), outline_width=3)
 
@@ -475,7 +475,7 @@ def create_reel_video(audio_path: str, script: str, topic: str, image_paths: lis
         "-r", str(FPS),
         "-i", "pipe:0",
         "-i", audio_path,
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
         "-shortest",
         "-pix_fmt", "yuv420p",
