@@ -75,8 +75,16 @@ def split_into_sentences(text: str) -> list:
     return [s.strip() for s in sentences if s.strip()]
 
 
-def get_font(size: int, bold: bool = False):
+def get_font(size: int, bold: bool = False, hot: bool = False):
     """Get a font, falling back to default if system fonts aren't available."""
+    if hot:
+        hot_font_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts", "Anton-Regular.ttf")
+        if os.path.exists(hot_font_path):
+            try:
+                return ImageFont.truetype(hot_font_path, size)
+            except Exception:
+                pass
+
     local_font_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts", "TikTokSans-Bold.ttf")
     if os.path.exists(local_font_path):
         try:
@@ -267,9 +275,8 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
             zy = (zh - HEIGHT) // 2
             bg_final = bg_zoomed.crop((zx, zy, zx + WIDTH, zy + HEIGHT))
 
-            # Light darken for text contrast (reduced from 0.6)
-            overlay = Image.new('RGB', (WIDTH, HEIGHT), (0, 0, 0))
-            img = Image.blend(bg_final, overlay, 0.4)
+            # No more black overlay as per user request
+            img = bg_final
         except Exception as e:
             logger.error("Failed to render background image: %s", e)
             draw_gradient_bg(img)
@@ -285,7 +292,23 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
     # draw_particles(draw, t) # Removed for extra clean look
 
     # --- Top section: branded header ---
-    # Removed as per user request (Purple bar, LearnCast AI badge)
+    # Re-adding heading (topic) as per user request
+    if topic:
+        # Subtle glow behind title
+        draw_glow(draw, WIDTH // 2, 80, 150, (0, 0, 0), alpha=0.6)
+        
+        # Display topic name at top
+        topic_text = topic.upper()
+        # Truncate if too long
+        if len(topic_text) > 30:
+            topic_text = topic_text[:27] + "..."
+            
+        t_bbox = draw.textbbox((0, 0), topic_text, font=topic_font)
+        tw = t_bbox[2] - t_bbox[0]
+        th = t_bbox[3] - t_bbox[1]
+        
+        # Draw with thick outline for readability without overlay
+        draw_text_with_outline(draw, ((WIDTH - tw) // 2, 60), topic_text, topic_font, (255, 255, 255), (0, 0, 0), outline_width=3)
 
     # --- Topic section ---
     # Removed as per user request (Learning label, Topic name)
@@ -300,7 +323,7 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
     # --- Audio waveform visualization ---
     # Removed as per user request
 
-    # Main caption area
+    # --- Render caption text ---
     sentence = sentences[current_sentence_idx]
     s_start, s_end = sentence_timings[current_sentence_idx]
     s_duration = s_end - s_start
@@ -329,7 +352,7 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
 
     # Font for TikTok style
     font = hook_font if current_sentence_idx == 0 else caption_font
-    max_text_width = WIDTH - 100
+    max_text_width = WIDTH - 80
 
     # Draw caption text with word-level highlighting
     words = sentence.split()
@@ -429,12 +452,12 @@ def create_reel_video(audio_path: str, script: str, topic: str, image_paths: lis
 
     # Pre-load fonts
     fonts = (
-        get_font(28, bold=True),   # title
-        get_font(26, bold=True),   # topic
-        get_font(52, bold=True),   # hook caption (increased size)
-        get_font(48, bold=True),   # normal caption (increased size)
-        get_font(13),              # small labels
-        get_font(14),              # timer
+        get_font(28, bold=True),                # title (unused now)
+        get_font(32, bold=True, hot=True),      # topic (heading)
+        get_font(72, bold=True, hot=True),      # hook caption (increased size)
+        get_font(64, bold=True, hot=True),      # normal caption (increased size)
+        get_font(13),                           # small labels
+        get_font(14),                           # timer
     )
 
     logger.info("Sentence timings: %s", [(f"{s:.1f}s-{e:.1f}s") for s, e in sentence_timings])
