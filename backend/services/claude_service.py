@@ -4,10 +4,14 @@ from fastapi import HTTPException
 from google import genai
 from google.genai import types
 
+from typing import Tuple, List
+
 logger = logging.getLogger("learncast.gemini")
 
 
-def generate_reel_script(topic: str, language: str, level: str) -> str:
+def generate_reel_script(topic: str, language: str, level: str) -> Tuple[str, List[str]]:
+    """Generate script and image prompts for a reel.
+    Returns (script_text, image_prompts)."""
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="GEMINI_API_KEY is not set")
@@ -143,7 +147,10 @@ def generate_reel_script(topic: str, language: str, level: str) -> str:
         f"10. Output ONLY the spoken script. Nothing else. No preamble, no 'Here is your script:'.\n\n"
     
         f"The test: after hearing this, the listener should feel like they just learned something "
-        f"surprising AND feel slightly smarter. They should want to immediately repeat it to someone."
+        f"surprising AND feel slightly smarter. They should want to immediately repeat it to someone.\n\n"
+        f"IMPORTANT: You must also provide 5 specific image prompts that visualize the content. "
+        f"Each prompt should be a high-quality descriptive sentence (e.g., 'A cinematic photo of a black hole bending light in deep space'). "
+        f"Place these prompts at the very end of your response, each on a new line, starting with 'IMAGE_PROMPT: '."
     )
 
     logger.info("Sending prompt to Gemini (system_prompt: %d chars, user_prompt: %d chars)", len(system_prompt), len(user_prompt))
@@ -176,7 +183,24 @@ def generate_reel_script(topic: str, language: str, level: str) -> str:
                 detail="Gemini returned an empty response. Try a different topic.",
             )
         script = response.text.strip()
-        logger.info("Raw script length: %d chars, %d words", len(script), len(script.split()))
+        logger.info("Raw response length: %d chars", len(script))
+
+        # Extract image prompts
+        image_prompts = []
+        lines = script.split("\n")
+        script_lines = []
+        for line in lines:
+            if "IMAGE_PROMPT:" in line:
+                prompt = line.split("IMAGE_PROMPT:")[1].strip()
+                if prompt:
+                    image_prompts.append(prompt)
+            else:
+                script_lines.append(line)
+        
+        script = "\n".join(script_lines).strip()
+        logger.info("Extracted %d image prompts", len(image_prompts))
+        logger.info("Script length: %d chars, %d words", len(script), len(script.split()))
+
         # Remove any markdown artifacts the model might sneak in
         script = script.replace("**", "").replace("*", "").replace("#", "").replace("- ", "")
         # Remove any lines that look like stage directions
@@ -189,7 +213,7 @@ def generate_reel_script(topic: str, language: str, level: str) -> str:
         ]
         script = " ".join(clean_lines)
         logger.info("Cleaned script: %d chars, %d words", len(script), len(script.split()))
-        return script
+        return script, image_prompts
     except HTTPException:
         raise
     except Exception as e:

@@ -1,5 +1,6 @@
 const steps = [
   { icon: '✦', label: 'Gemini Pro is writing your reel script...' },
+  { icon: '🎨', label: 'Generating background visuals with Flux...' },
   { icon: '🎙', label: 'Generating voiceover...' },
   { icon: '🎬', label: 'Composing your video reel...' },
 ]

@@ -217,10 +217,56 @@ def draw_timer(draw, t, duration, font):
     draw.text((WIDTH - tw - 30, HEIGHT - 40), timer_text, font=font, fill=(148, 163, 184, 150))
 
 
-def render_frame(t, duration, sentences, topic, fonts, sentence_timings):
-    """Render a single video frame at time t with rich visual elements."""
+def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images):
+    """Render a single video frame at time t with rich visual elements and background images."""
     img = Image.new("RGB", (WIDTH, HEIGHT), BG_TOP)
-    draw_gradient_bg(img)
+    
+    # --- Background Image with Ken Burns / Fade effect ---
+    if images:
+        # Determine which image to show based on time
+        num_images = len(images)
+        img_idx = int((t / duration) * num_images)
+        img_idx = min(img_idx, num_images - 1)
+        
+        try:
+            bg_img = images[img_idx]
+            # Resize and crop to fill
+            # bg_img is a PIL Image object (we'll pre-load them for speed)
+            iw, ih = bg_img.size
+            aspect_target = WIDTH / HEIGHT
+            aspect_img = iw / ih
+            
+            if aspect_img > aspect_target:
+                # Image is wider than needed, crop sides
+                new_w = int(ih * aspect_target)
+                left = (iw - new_w) // 2
+                bg_crop = bg_img.crop((left, 0, left + new_w, ih))
+            else:
+                # Image is taller than needed, crop top/bottom
+                new_h = int(iw / aspect_target)
+                top = (ih - new_h) // 2
+                bg_crop = bg_img.crop((0, top, iw, top + new_h))
+            
+            bg_resized = bg_crop.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
+            
+            # Subtle Ken Burns (zoom)
+            zoom_factor = 1.0 + 0.1 * ((t % (duration / num_images)) / (duration / num_images))
+            zw, zh = int(WIDTH * zoom_factor), int(HEIGHT * zoom_factor)
+            bg_zoomed = bg_resized.resize((zw, zh), Image.Resampling.LANCZOS)
+            # Center crop zoomed image
+            zx = (zw - WIDTH) // 2
+            zy = (zh - HEIGHT) // 2
+            bg_final = bg_zoomed.crop((zx, zy, zx + WIDTH, zy + HEIGHT))
+            
+            # Darken for readability
+            overlay = Image.new('RGB', (WIDTH, HEIGHT), (0, 0, 0))
+            img = Image.blend(bg_final, overlay, 0.6)
+        except Exception as e:
+            logger.error("Failed to render background image: %s", e)
+            draw_gradient_bg(img)
+    else:
+        draw_gradient_bg(img)
+
     draw = ImageDraw.Draw(img)
 
     title_font, topic_font, hook_font, caption_font, small_font, timer_font = fonts
@@ -414,8 +460,8 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings):
     return img
 
 
-def create_reel_video(audio_path: str, script: str, topic: str) -> str:
-    """Create a 9:16 reel video with rich animated visuals and captions,
+def create_reel_video(audio_path: str, script: str, topic: str, image_paths: list = None) -> str:
+    """Create a 9:16 reel video with rich animated visuals, background images, and captions,
     synced to the audio. Returns the path to the output MP4."""
 
     output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
@@ -428,6 +474,19 @@ def create_reel_video(audio_path: str, script: str, topic: str) -> str:
     sentences = split_into_sentences(script)
     num_sentences = len(sentences)
     logger.info("Split script into %d sentences:", num_sentences)
+
+    # Pre-load images
+    loaded_images = []
+    if image_paths:
+        logger.info("Pre-loading %d background images...", len(image_paths))
+        for p in image_paths:
+            try:
+                if os.path.exists(p):
+                    img = Image.open(p).convert("RGB")
+                    loaded_images.append(img)
+            except Exception as e:
+                logger.error("Failed to load image %s: %s", p, e)
+    
     for i, s in enumerate(sentences):
         logger.info("  [%d] %s", i + 1, s)
 
@@ -492,7 +551,7 @@ def create_reel_video(audio_path: str, script: str, topic: str) -> str:
         render_start = time.time()
         for frame_num in range(total_frames):
             t = frame_num / FPS
-            img = render_frame(t, duration, sentences, topic, fonts, sentence_timings)
+            img = render_frame(t, duration, sentences, topic, fonts, sentence_timings, loaded_images)
             proc.stdin.write(img.tobytes())
             if frame_num % (FPS * 5) == 0:
                 logger.info("  Rendered %.0f/%.0fs (%.0f%%)", t, duration, (frame_num / total_frames) * 100)

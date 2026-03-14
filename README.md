@@ -6,8 +6,8 @@
 
 - **Frontend:** React (Vite) + Tailwind CSS
 - **Backend:** Python FastAPI
-- **AI:** Gemini (Google) for script generation, Edge TTS (Microsoft) for text-to-speech voiceover
-- **Video:** FFmpeg for composing 9:16 vertical reel videos with animated captions
+- **AI:** Gemini (Google) for script generation, Edge TTS (Microsoft) for voiceover, Flux.1-schnell (NVIDIA) for background visuals
+- **Video:** FFmpeg for composing 9:16 vertical reel videos with animated captions and AI-generated background transitions
 
 ## 🚀 Setup
 
@@ -28,6 +28,7 @@ Create a `.env` file in the `backend/` directory:
 
 ```
 GEMINI_API_KEY=your_key_here
+NVIDIA_API_KEY=your_key_here
 ```
 
 ### Frontend
@@ -61,10 +62,11 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## 📝 Notes
 
-- **Only 1 API key needed:** Just `GEMINI_API_KEY`. Voice generation uses Edge TTS which is completely free with no API key required.
+- **Gemini + NVIDIA + Edge TTS:** Only `GEMINI_API_KEY` and `NVIDIA_API_KEY` are needed. Voice generation uses Edge TTS which is completely free.
+- **NVIDIA AI Key:** Get your key at [build.nvidia.com](https://build.nvidia.com/black-forest-labs/flux-1-schnell).
 - **Edge TTS:** Microsoft's neural text-to-speech engine — high quality, natural voices, supports 16+ languages, completely free, no limits.
 - **Google Gemini Free Tier:** Generous free tier with API access. Get your key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 - **FFmpeg Required:** Must be installed on your system. Install via `brew install ffmpeg` (macOS), `apt install ffmpeg` (Ubuntu), or [ffmpeg.org](https://ffmpeg.org/download.html).
 - Videos are generated in **9:16 vertical format** (720×1280) — the standard TikTok/Reels dimension.
 - Animated **captions** are overlaid on every reel for the social media feel.
-- Video generation typically takes **10–20 seconds** (much faster than cloud-based avatar services).
+- Video generation typically takes **60–90 seconds** (includes AI script, image generation, voiceover, and video rendering).

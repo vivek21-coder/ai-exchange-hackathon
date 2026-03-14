@@ -35,12 +35,13 @@ export default function App() {
 
     loadingTimers.current.forEach(clearTimeout)
     loadingTimers.current = [
-      setTimeout(() => setLoadingStep(1), 4000),
-      setTimeout(() => setLoadingStep(2), 12000),
+      setTimeout(() => setLoadingStep(1), 5000),
+      setTimeout(() => setLoadingStep(2), 25000),
+      setTimeout(() => setLoadingStep(3), 35000),
     ]
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 180000)
+    const timeout = setTimeout(() => controller.abort(), 240000)
 
     try {
       const res = await fetch('/api/generate', {
@@ -153,7 +154,7 @@ export default function App() {
           LearnCast AI — Learn anything in 60 seconds
         </p>
         <p className="text-slate-500/40 text-xs mt-1">
-          Powered by Gemini + Edge TTS + FFmpeg
+          Powered by Gemini + Flux + Edge TTS + FFmpeg
         </p>
       </footer>
     </div>
