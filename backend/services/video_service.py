@@ -77,6 +77,13 @@ def split_into_sentences(text: str) -> list:
 
 def get_font(size: int, bold: bool = False):
     """Get a font, falling back to default if system fonts aren't available."""
+    local_font_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts", "TikTokSans-Bold.ttf")
+    if os.path.exists(local_font_path):
+        try:
+            return ImageFont.truetype(local_font_path, size)
+        except Exception:
+            pass
+
     font_names = [
         "/System/Library/Fonts/Helvetica.ttc",
         "/System/Library/Fonts/SFNSText.ttf",
@@ -221,7 +228,7 @@ def draw_timer(draw, t, duration, font):
 
 
 def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images):
-    """Render a single video frame at time t with rich visual elements and background images."""
+    """Render a single video frame at time t with background images and TikTok-style captions."""
     img = Image.new("RGB", (WIDTH, HEIGHT), BG_TOP)
 
     # --- Background Image with Ken Burns / Fade effect ---
@@ -234,7 +241,6 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
         try:
             bg_img = images[img_idx]
             # Resize and crop to fill
-            # bg_img is a PIL Image object (we'll pre-load them for speed)
             iw, ih = bg_img.size
             aspect_target = WIDTH / HEIGHT
             aspect_img = iw / ih
@@ -261,9 +267,9 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
             zy = (zh - HEIGHT) // 2
             bg_final = bg_zoomed.crop((zx, zy, zx + WIDTH, zy + HEIGHT))
 
-            # Darken for readability
+            # Light darken for text contrast (reduced from 0.6)
             overlay = Image.new('RGB', (WIDTH, HEIGHT), (0, 0, 0))
-            img = Image.blend(bg_final, overlay, 0.6)
+            img = Image.blend(bg_final, overlay, 0.4)
         except Exception as e:
             logger.error("Failed to render background image: %s", e)
             draw_gradient_bg(img)
@@ -275,67 +281,14 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
     title_font, topic_font, hook_font, caption_font, small_font, timer_font = fonts
     num_sentences = len(sentences)
 
-    # --- Animated background glow orbs ---
-    # Disabled as per user request (might look like "black circles" depending on background)
-    # glow_x1 = WIDTH * 0.3 + math.sin(t * 0.3) * 80
-    # glow_y1 = HEIGHT * 0.2 + math.cos(t * 0.2) * 60
-    # draw_glow(draw, glow_x1, glow_y1, 200, ACCENT_PURPLE, 0.08)
-
-    # glow_x2 = WIDTH * 0.7 + math.cos(t * 0.25) * 70
-    # glow_y2 = HEIGHT * 0.7 + math.sin(t * 0.3) * 50
-    # draw_glow(draw, glow_x2, glow_y2, 180, ACCENT_CYAN, 0.06)
-
-    # glow_x3 = WIDTH * 0.5 + math.sin(t * 0.4) * 100
-    # glow_y3 = HEIGHT * 0.45 + math.cos(t * 0.35) * 80
-    # draw_glow(draw, glow_x3, glow_y3, 150, ACCENT_PINK, 0.04)
-
     # --- Floating particles ---
-    draw_particles(draw, t)
+    # draw_particles(draw, t) # Removed for extra clean look
 
     # --- Top section: branded header ---
-    # Decorative line
-    line_alpha = 0.3 + 0.1 * math.sin(t * 2)
-    line_color = tuple(int(c * line_alpha) for c in ACCENT_PURPLE)
-    draw.line([(60, 55), (WIDTH - 60, 55)], fill=line_color, width=1)
+    # Removed as per user request (Purple bar, LearnCast AI badge)
 
-    # "LearnCast AI" badge
-    badge_text = "✦ LearnCast AI"
-    badge_bbox = draw.textbbox((0, 0), badge_text, font=small_font)
-    badge_w = badge_bbox[2] - badge_bbox[0] + 24
-    badge_x = (WIDTH - badge_w) // 2
-    draw_rounded_rect(draw, [badge_x, 30, badge_x + badge_w, 52], 11,
-                      fill=(124, 58, 237, 30), outline=ACCENT_PURPLE, outline_width=1)
-    draw.text((badge_x + 12, 33), badge_text, font=small_font, fill=ACCENT_PURPLE)
-
-    # --- Topic card section ---
-    # Orbiting dots around topic area
-    draw_orbit_dots(draw, WIDTH // 2, 180, t)
-
-    # Topic label
-    topic_label = "LEARNING"
-    lb = draw.textbbox((0, 0), topic_label, font=small_font)
-    lw = lb[2] - lb[0]
-    draw.text(((WIDTH - lw) // 2, 80), topic_label, font=small_font,
-              fill=(148, 163, 184))
-
-    # Topic name with glow
-    topic_lines = word_wrap_pil(draw, topic, topic_font, WIDTH - 100)
-    y_topic = 105
-    for line in topic_lines:
-        bbox = draw.textbbox((0, 0), line, font=topic_font)
-        lw = bbox[2] - bbox[0]
-        x = (WIDTH - lw) // 2
-        # Subtle glow behind text
-        draw.text((x, y_topic), line, font=topic_font, fill=TEXT_COLOR)
-        y_topic += bbox[3] - bbox[1] + 8
-
-    # Decorative line below topic
-    line2_y = y_topic + 10
-    line_w = 100 + 30 * math.sin(t * 1.5)
-    line_cx = WIDTH // 2
-    gradient_line_start = tuple(int(c * 0.5) for c in ACCENT_PURPLE)
-    draw.line([(line_cx - line_w, line2_y), (line_cx + line_w, line2_y)],
-              fill=gradient_line_start, width=2)
+    # --- Topic section ---
+    # Removed as per user request (Learning label, Topic name)
 
     # --- Sentence counter / progress indicator ---
     current_sentence_idx = 0
@@ -345,8 +298,7 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
     current_sentence_idx = min(current_sentence_idx, num_sentences - 1)
 
     # --- Audio waveform visualization ---
-    wave_y = HEIGHT - 70
-    draw_waveform(draw, wave_y, t, (60, WIDTH - 60), ACCENT_PURPLE, bar_count=40)
+    # Removed as per user request
 
     # Main caption area
     sentence = sentences[current_sentence_idx]
@@ -377,7 +329,7 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
 
     # Font for TikTok style
     font = hook_font if current_sentence_idx == 0 else caption_font
-    max_text_width = WIDTH - 80
+    max_text_width = WIDTH - 100
 
     # Draw caption text with word-level highlighting
     words = sentence.split()
@@ -401,9 +353,10 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
     if current_line:
         lines.append(current_line)
 
-    line_height = draw.textbbox((0, 0), "Ay", font=font)[3] + 20
+    line_height = draw.textbbox((0, 0), "Ay", font=font)[3] + 25
     total_text_height = len(lines) * line_height
-    y_text = (HEIGHT // 2) + 50 # Lower center for TikTok feel
+    # Lower third for captions
+    y_text = (HEIGHT * 0.7) - (total_text_height // 2)
 
     for line in lines:
         line_total_width = sum(w["width"] for w in line) + space_width * (len(line) - 1)
@@ -416,39 +369,13 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
             faded_fill = tuple(int(c * alpha) for c in fill_color)
             faded_outline = tuple(int(c * alpha) for c in (0, 0, 0))
 
-            draw_text_with_outline(draw, (x_text, y_text), w_info["text"], font, faded_fill, faded_outline)
+            draw_text_with_outline(draw, (x_text, y_text), w_info["text"], font, faded_fill, faded_outline, outline_width=4)
             x_text += w_info["width"] + space_width
         y_text += line_height
 
-    # Hook label for first sentence
-    if current_sentence_idx == 0 and alpha > 0.5:
-        hook_label = "🔥 HOOK"
-        hl_bbox = draw.textbbox((0, 0), hook_label, font=small_font)
-        hl_w = hl_bbox[2] - hl_bbox[0] + 16
-        hl_x = (WIDTH - hl_w) // 2
-        hl_y = (HEIGHT // 2) - 10
-        faded_accent_bg = tuple(int(c * alpha * 0.7) for c in ACCENT_PURPLE)
-        draw_rounded_rect(draw, [hl_x, hl_y, hl_x + hl_w, hl_y + 22], 11,
-                          fill=faded_accent_bg)
-        draw.text((hl_x + 8, hl_y + 3), hook_label, font=small_font,
-                  fill=tuple(int(255 * alpha) for _ in range(3)))
+    # Removed labels (Hook, Fact counter) as per user request
 
-    # --- Fact counter ---
-    if current_sentence_idx > 0:
-        fact_text = f"#{current_sentence_idx}/{num_sentences - 1}"
-        ft_bbox = draw.textbbox((0, 0), fact_text, font=small_font)
-        ft_w = ft_bbox[2] - ft_bbox[0] + 16
-        ft_x = (WIDTH - ft_w) // 2
-        ft_y = (HEIGHT // 2) - 10
-        draw_rounded_rect(draw, [ft_x, ft_y, ft_x + ft_w, ft_y + 22], 11,
-                          fill=(30, 30, 56))
-        draw.text((ft_x + 8, ft_y + 3), fact_text, font=small_font, fill=ACCENT_CYAN)
-
-    # --- Gradient progress bar ---
-    draw_progress_bar(draw, t, duration)
-
-    # --- Timer ---
-    draw_timer(draw, t, duration, timer_font)
+    # Removed Progress bar and Timer as per user request
 
     return img
 
@@ -504,8 +431,8 @@ def create_reel_video(audio_path: str, script: str, topic: str, image_paths: lis
     fonts = (
         get_font(28, bold=True),   # title
         get_font(26, bold=True),   # topic
-        get_font(38, bold=True),   # hook caption
-        get_font(34, bold=True),   # normal caption
+        get_font(52, bold=True),   # hook caption (increased size)
+        get_font(48, bold=True),   # normal caption (increased size)
         get_font(13),              # small labels
         get_font(14),              # timer
     )
