@@ -41,7 +41,8 @@ export default function App() {
     ]
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 240000)
+    // No timeout for the fetch request, as video generation can take several minutes
+    // and the user has indicated they are willing to wait.
 
     try {
       const res = await fetch('/api/generate', {
@@ -50,8 +51,6 @@ export default function App() {
         body: JSON.stringify({ topic, language, level }),
         signal: controller.signal,
       })
-
-      clearTimeout(timeout)
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))

@@ -478,7 +478,7 @@ def create_reel_video(audio_path: str, script: str, topic: str, image_paths: lis
 
         proc.stdin.close()
         logger.info("All frames piped in %.1fs, waiting for FFmpeg to finish encoding...", time.time() - render_start)
-        ret = proc.wait(timeout=180)
+        ret = proc.wait(timeout=600)
         stderr = proc.stderr.read()
 
         if ret != 0:
@@ -503,7 +503,7 @@ def create_reel_video(audio_path: str, script: str, topic: str, image_paths: lis
         return output_path
 
     except subprocess.TimeoutExpired:
-        logger.error("FFmpeg timed out after 180s")
+        logger.error("FFmpeg timed out after 600s")
         proc.kill()
         raise HTTPException(status_code=500, detail="Video creation timed out")
     except HTTPException:
