@@ -111,11 +111,14 @@ def word_wrap_pil(draw, text, font, max_width):
     return lines
 
 
-def draw_text_with_shadow(draw, xy, text, font, fill, shadow_color=TEXT_SHADOW, shadow_offset=2):
-    """Draw text with a shadow for better readability."""
+def draw_text_with_outline(draw, xy, text, font, fill, outline_color=(0, 0, 0), outline_width=3):
+    """Draw text with a thick outline for TikTok style."""
     x, y = xy
-    # Draw shadow
-    draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill=shadow_color)
+    # Draw outline by drawing the text multiple times with offsets
+    for dx in range(-outline_width, outline_width + 1):
+        for dy in range(-outline_width, outline_width + 1):
+            if dx != 0 or dy != 0:
+                draw.text((x + dx, y + dy), text, font=font, fill=outline_color)
     # Draw main text
     draw.text((x, y), text, font=font, fill=fill)
 
@@ -220,14 +223,14 @@ def draw_timer(draw, t, duration, font):
 def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images):
     """Render a single video frame at time t with rich visual elements and background images."""
     img = Image.new("RGB", (WIDTH, HEIGHT), BG_TOP)
-    
+
     # --- Background Image with Ken Burns / Fade effect ---
     if images:
         # Determine which image to show based on time
         num_images = len(images)
         img_idx = int((t / duration) * num_images)
         img_idx = min(img_idx, num_images - 1)
-        
+
         try:
             bg_img = images[img_idx]
             # Resize and crop to fill
@@ -235,7 +238,7 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
             iw, ih = bg_img.size
             aspect_target = WIDTH / HEIGHT
             aspect_img = iw / ih
-            
+
             if aspect_img > aspect_target:
                 # Image is wider than needed, crop sides
                 new_w = int(ih * aspect_target)
@@ -246,9 +249,9 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
                 new_h = int(iw / aspect_target)
                 top = (ih - new_h) // 2
                 bg_crop = bg_img.crop((0, top, iw, top + new_h))
-            
+
             bg_resized = bg_crop.resize((WIDTH, HEIGHT), Image.Resampling.LANCZOS)
-            
+
             # Subtle Ken Burns (zoom)
             zoom_factor = 1.0 + 0.1 * ((t % (duration / num_images)) / (duration / num_images))
             zw, zh = int(WIDTH * zoom_factor), int(HEIGHT * zoom_factor)
@@ -257,7 +260,7 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
             zx = (zw - WIDTH) // 2
             zy = (zh - HEIGHT) // 2
             bg_final = bg_zoomed.crop((zx, zy, zx + WIDTH, zy + HEIGHT))
-            
+
             # Darken for readability
             overlay = Image.new('RGB', (WIDTH, HEIGHT), (0, 0, 0))
             img = Image.blend(bg_final, overlay, 0.6)
@@ -273,18 +276,18 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
     num_sentences = len(sentences)
 
     # --- Animated background glow orbs ---
-    glow_x1 = WIDTH * 0.3 + math.sin(t * 0.3) * 80
-    glow_y1 = HEIGHT * 0.2 + math.cos(t * 0.2) * 60
-    draw_glow(draw, glow_x1, glow_y1, 200, ACCENT_PURPLE, 0.08)
+    # Disabled as per user request (might look like "black circles" depending on background)
+    # glow_x1 = WIDTH * 0.3 + math.sin(t * 0.3) * 80
+    # glow_y1 = HEIGHT * 0.2 + math.cos(t * 0.2) * 60
+    # draw_glow(draw, glow_x1, glow_y1, 200, ACCENT_PURPLE, 0.08)
 
-    glow_x2 = WIDTH * 0.7 + math.cos(t * 0.25) * 70
-    glow_y2 = HEIGHT * 0.7 + math.sin(t * 0.3) * 50
-    draw_glow(draw, glow_x2, glow_y2, 180, ACCENT_CYAN, 0.06)
+    # glow_x2 = WIDTH * 0.7 + math.cos(t * 0.25) * 70
+    # glow_y2 = HEIGHT * 0.7 + math.sin(t * 0.3) * 50
+    # draw_glow(draw, glow_x2, glow_y2, 180, ACCENT_CYAN, 0.06)
 
-    # Third glow for depth
-    glow_x3 = WIDTH * 0.5 + math.sin(t * 0.4) * 100
-    glow_y3 = HEIGHT * 0.45 + math.cos(t * 0.35) * 80
-    draw_glow(draw, glow_x3, glow_y3, 150, ACCENT_PINK, 0.04)
+    # glow_x3 = WIDTH * 0.5 + math.sin(t * 0.4) * 100
+    # glow_y3 = HEIGHT * 0.45 + math.cos(t * 0.35) * 80
+    # draw_glow(draw, glow_x3, glow_y3, 150, ACCENT_PINK, 0.04)
 
     # --- Floating particles ---
     draw_particles(draw, t)
@@ -341,99 +344,89 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
             current_sentence_idx = i
     current_sentence_idx = min(current_sentence_idx, num_sentences - 1)
 
-    # Draw sentence dots (like a carousel indicator)
-    dot_y = line2_y + 25
-    total_dot_width = num_sentences * 14 - 6
-    dot_start_x = (WIDTH - total_dot_width) // 2
-    for i in range(num_sentences):
-        dx = dot_start_x + i * 14
-        if i == current_sentence_idx:
-            draw.rounded_rectangle([dx, dot_y, dx + 20, dot_y + 6], radius=3, fill=ACCENT_CYAN)
-        elif i < current_sentence_idx:
-            draw.ellipse([dx + 1, dot_y, dx + 7, dot_y + 6], fill=ACCENT_PURPLE)
-        else:
-            draw.ellipse([dx + 1, dot_y, dx + 7, dot_y + 6], fill=(50, 50, 70))
-
     # --- Audio waveform visualization ---
     wave_y = HEIGHT - 70
     draw_waveform(draw, wave_y, t, (60, WIDTH - 60), ACCENT_PURPLE, bar_count=40)
 
-    # --- Main caption area ---
+    # Main caption area
     sentence = sentences[current_sentence_idx]
     s_start, s_end = sentence_timings[current_sentence_idx]
     s_duration = s_end - s_start
 
-    # Calculate fade
-    fade_in_time = min(0.4, s_duration * 0.15)
-    fade_out_time = min(0.3, s_duration * 0.1)
+    # Word-level highlighting
+    words = sentence.split()
+    total_words_in_sentence = len(words)
+    word_highlight_idx = -1
+    if total_words_in_sentence > 0:
+        # Estimate word timing within sentence proportionally
+        word_idx = int(((t - s_start) / s_duration) * total_words_in_sentence)
+        word_highlight_idx = min(word_idx, total_words_in_sentence - 1)
+
+    # Calculate fade (less aggressive for TikTok style)
+    fade_in_time = 0.15
+    fade_out_time = 0.1
     elapsed = t - s_start
     remaining = s_end - t
 
+    alpha = 1.0
     if elapsed < fade_in_time:
         alpha = elapsed / fade_in_time
     elif remaining < fade_out_time:
         alpha = remaining / fade_out_time
-    else:
-        alpha = 1.0
     alpha = max(0.0, min(1.0, alpha))
 
-    # Slide-up animation for caption entry
-    slide_offset = 0
-    if elapsed < fade_in_time:
-        slide_offset = int(20 * (1 - elapsed / fade_in_time))
+    # Font for TikTok style
+    font = hook_font if current_sentence_idx == 0 else caption_font
+    max_text_width = WIDTH - 80
 
-    # Choose style for hook (first sentence) vs normal captions
-    is_hook = current_sentence_idx == 0
-    font = hook_font if is_hook else caption_font
-    max_text_width = WIDTH - 100
+    # Draw caption text with word-level highlighting
+    words = sentence.split()
+    lines = []
+    current_line = []
+    current_line_width = 0
+    space_width = draw.textbbox((0, 0), " ", font=font)[2]
 
-    # Word wrap
-    lines = word_wrap_pil(draw, sentence, font, max_text_width)
-    line_height = draw.textbbox((0, 0), "Ay", font=font)[3] + 12
+    # Group words into lines for manual rendering (to allow per-word coloring)
+    for i, word in enumerate(words):
+        w_bbox = draw.textbbox((0, 0), word, font=font)
+        w_width = w_bbox[2] - w_bbox[0]
+
+        if current_line_width + w_width > max_text_width and current_line:
+            lines.append(current_line)
+            current_line = []
+            current_line_width = 0
+
+        current_line.append({"text": word, "index": i, "width": w_width})
+        current_line_width += w_width + space_width
+    if current_line:
+        lines.append(current_line)
+
+    line_height = draw.textbbox((0, 0), "Ay", font=font)[3] + 20
     total_text_height = len(lines) * line_height
+    y_text = (HEIGHT // 2) + 50 # Lower center for TikTok feel
 
-    # Caption card background (frosted glass effect)
-    card_padding = 24
-    card_y_start = HEIGHT // 2 - 30 + slide_offset
-    card_height = total_text_height + card_padding * 2
-    card_x = 30
-    card_w = WIDTH - 60
-
-    # Draw card with semi-transparent background
-    card_bg = (17, 17, 30)
-    border_color = ACCENT_PURPLE if is_hook else CARD_BORDER
-    border_alpha = alpha
-    faded_border = tuple(int(c * border_alpha) for c in border_color)
-    faded_bg = tuple(int(c * alpha * 0.85) for c in card_bg)
-    draw_rounded_rect(draw, [card_x, card_y_start, card_x + card_w, card_y_start + card_height],
-                      16, fill=faded_bg, outline=faded_border, outline_width=2)
-
-    # Accent bar on left side of card
-    accent_color = ACCENT_PURPLE if is_hook else ACCENT_CYAN
-    faded_accent = tuple(int(c * alpha) for c in accent_color)
-    draw_rounded_rect(draw, [card_x, card_y_start + 8, card_x + 4, card_y_start + card_height - 8],
-                      2, fill=faded_accent)
-
-    # Draw caption text
-    color = ACCENT_PURPLE if is_hook else TEXT_COLOR
-    faded_color = tuple(int(c * alpha) for c in color)
-    faded_shadow = tuple(int(c * alpha) for c in TEXT_SHADOW)
-
-    y_text = card_y_start + card_padding
     for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font)
-        lw = bbox[2] - bbox[0]
-        x = (WIDTH - lw) // 2
-        draw_text_with_shadow(draw, (x, y_text), line, font, faded_color, faded_shadow)
+        line_total_width = sum(w["width"] for w in line) + space_width * (len(line) - 1)
+        x_text = (WIDTH - line_total_width) // 2
+
+        for w_info in line:
+            # Highlight current word in YELLOW
+            fill_color = (255, 255, 0) if w_info["index"] == word_highlight_idx else (255, 255, 255)
+            # Apply alpha for fade
+            faded_fill = tuple(int(c * alpha) for c in fill_color)
+            faded_outline = tuple(int(c * alpha) for c in (0, 0, 0))
+
+            draw_text_with_outline(draw, (x_text, y_text), w_info["text"], font, faded_fill, faded_outline)
+            x_text += w_info["width"] + space_width
         y_text += line_height
 
     # Hook label for first sentence
-    if is_hook and alpha > 0.5:
+    if current_sentence_idx == 0 and alpha > 0.5:
         hook_label = "🔥 HOOK"
         hl_bbox = draw.textbbox((0, 0), hook_label, font=small_font)
         hl_w = hl_bbox[2] - hl_bbox[0] + 16
-        hl_x = card_x + card_w - hl_w - 10
-        hl_y = card_y_start - 12
+        hl_x = (WIDTH - hl_w) // 2
+        hl_y = (HEIGHT // 2) - 10
         faded_accent_bg = tuple(int(c * alpha * 0.7) for c in ACCENT_PURPLE)
         draw_rounded_rect(draw, [hl_x, hl_y, hl_x + hl_w, hl_y + 22], 11,
                           fill=faded_accent_bg)
@@ -445,8 +438,8 @@ def render_frame(t, duration, sentences, topic, fonts, sentence_timings, images)
         fact_text = f"#{current_sentence_idx}/{num_sentences - 1}"
         ft_bbox = draw.textbbox((0, 0), fact_text, font=small_font)
         ft_w = ft_bbox[2] - ft_bbox[0] + 16
-        ft_x = card_x + 10
-        ft_y = card_y_start - 12
+        ft_x = (WIDTH - ft_w) // 2
+        ft_y = (HEIGHT // 2) - 10
         draw_rounded_rect(draw, [ft_x, ft_y, ft_x + ft_w, ft_y + 22], 11,
                           fill=(30, 30, 56))
         draw.text((ft_x + 8, ft_y + 3), fact_text, font=small_font, fill=ACCENT_CYAN)
@@ -486,7 +479,7 @@ def create_reel_video(audio_path: str, script: str, topic: str, image_paths: lis
                     loaded_images.append(img)
             except Exception as e:
                 logger.error("Failed to load image %s: %s", p, e)
-    
+
     for i, s in enumerate(sentences):
         logger.info("  [%d] %s", i + 1, s)
 
