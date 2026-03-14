@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Build output
+frontend/dist/
+
+# Generated videos/audio
+backend/outputs/
+
+# Environment variables (contains API keys)
+backend/.env
+
+# IDE
+.idea/
+
+# OS files
+.DS_Store
+*.iml
+
+# Misc
+*.log
+.output.txt
