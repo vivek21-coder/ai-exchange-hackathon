@@ -1,8 +1,8 @@
 const steps = [
-  { icon: '✦', label: 'Gemini Pro is writing your reel script...' },
-  { icon: '🎨', label: 'Generating background visuals with Flux...' },
+  { icon: '✦', label: 'Writing your script...' },
+  { icon: '🎨', label: 'Generating background visuals...' },
   { icon: '🎙', label: 'Generating voiceover...' },
-  { icon: '🎬', label: 'Composing your video reel...' },
+  { icon: '🎬', label: 'Composing your video...' },
 ]
 
 export default function LoadingState({ step }) {
